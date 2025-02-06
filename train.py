@@ -1,4 +1,5 @@
-import os
+import time
+
 import torch
 import torch.utils.data.dataloader
 
@@ -8,25 +9,29 @@ def train(rank, args, model, device, dataset, dataloader_kwargs):
     data_loader = torch.utils.data.DataLoader(dataset, **dataloader_kwargs)
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
+    start = time.time()
+
     for epoch in range(1, args.num_epochs + 1):
-        train_epoch(epoch, args, model, device, data_loader, optimizer)
+        train_epoch(epoch, rank, model, device, data_loader, optimizer)
+
+    end = time.time()
+
+    print(f"Rank {rank} training time: {end - start}")
 
 
-def train_epoch(epoch, args, model, device, data_loader, optimizer):
+def train_epoch(epoch, rank, model, device, data_loader, optimizer):
     model.train()
-    pid = os.getpid()
+    start = time.time()
 
-    for batch_idx, (data, target) in enumerate(data_loader):
+    for data, target in data_loader:
         optimizer.zero_grad()
         output = model(data.to(device))
         loss = torch.nn.functional.nll_loss(output, target.to(device))
         loss.backward()
         optimizer.step()
 
+    end = time.time()
+
     print(
-        "Process {}: training epoch {}: loss {:.6f}".format(
-            pid,
-            epoch,
-            loss.item(),
-        )
+        f"Rank {rank} training epoch {epoch} in {end - start} seconds: loss = {loss.item():.6f}"
     )
