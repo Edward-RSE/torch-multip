@@ -86,7 +86,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--num-ranks", default=1, type=int)
     parser.add_argument("--batch-size", default=64, type=int)
-    parser.add_argument("--num-epochs", default=10, type=int)
+    parser.add_argument("--num-epochs", default=15, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--momentum", default=0.5, type=float)
     args = parser.parse_args()

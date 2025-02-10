@@ -22,8 +22,8 @@ def validate_model(args, model, device, dataset, dataloader_kwargs):
 
     loss /= len(data_loader.dataset)
     percent_correct = correct / len(data_loader.dataset) * 100.0
+    print(f"Average loss = {loss:.6f}")
     print(f"Accuracy = {correct} / {len(data_loader.dataset)} ({percent_correct:.0f}%)")
-    print(f"Average loss = {loss:.4f}")
 
     end = time.time()
-    print(f"Model validation time: {end - start}")
+    print(f"Model validation time: {end - start:.2f}")

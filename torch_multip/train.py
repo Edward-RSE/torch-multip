@@ -15,7 +15,7 @@ def train_model(rank, args, model, device, dataset, dataloader_kwargs):
         train_epoch(epoch, rank, model, device, data_loader, optimizer)
 
     end = time.time()
-    print(f"Rank {rank} training time: {end - start:.2f}")
+    print(f"Rank {rank} model training time: {end - start:.2f} seconds")
 
 
 def train_epoch(epoch, rank, model, device, data_loader, optimizer):
@@ -32,5 +32,5 @@ def train_epoch(epoch, rank, model, device, data_loader, optimizer):
     end = time.time()
 
     print(
-        f"Rank {rank} training epoch {epoch} in {end - start} seconds: loss = {loss.item():.6f}"
+        f"Rank {rank} training epoch {epoch:3d} in {end - start:.2f} seconds: loss = {loss.item():.6f}"
     )
