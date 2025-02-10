@@ -3,30 +3,7 @@ import argparse
 import torch
 import torchvision
 
-from torch_multip.train import train_model
-from torch_multip.validate import validate_model
-
-
-class Net(torch.nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = torch.nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = torch.nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = torch.nn.Dropout2d()
-        self.fc1 = torch.nn.Linear(320, 50)
-        self.fc2 = torch.nn.Linear(50, 10)
-
-    def forward(self, x):
-        x = torch.nn.functional.relu(torch.nn.functional.max_pool2d(self.conv1(x), 2))
-        x = torch.nn.functional.relu(
-            torch.nn.functional.max_pool2d(self.conv2_drop(self.conv2(x)), 2)
-        )
-        x = x.view(-1, 320)
-        x = torch.nn.functional.relu(self.fc1(x))
-        x = torch.nn.functional.dropout(x, training=self.training)
-        x = self.fc2(x)
-        x = torch.nn.functional.log_softmax(x, dim=1)
-        return x
+from torch_multip.multiprocess import train_multiprocess
 
 
 def main(args):
@@ -47,41 +24,8 @@ def main(args):
         "shuffle": True,
     }
 
-    if args.use_cuda and torch.cuda.is_available():
-        device = torch.device("cuda")
-        dataloader_kwargs.update({"num_workers": 1, "pin_memory": True})
-    elif args.use_mps and torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
+    train_multiprocess(args, dataset, dataloader_kwargs)
 
-    print(f"Using device: {device} with {args.num_ranks} ranks")
-    print(args)
-
-    # Put the device onto the device, and, if on the CPU, into shared memory.
-    # For CPU parallelisation, each process will be able to access (and update)
-    # the model because it's in shared memory on the node. This will not work
-    # for distributed parallelism, e.g. > 1 node or > 1 GPU.
-    model = Net().to(device)
-    model.share_memory()
-
-    # Start each process running train()
-    ranks = []
-    for rank in range(args.num_ranks):
-        p = torch.multiprocessing.Process(
-            target=train_model,
-            args=(rank, args, model, device, dataset, dataloader_kwargs),
-        )
-        p.start()
-        ranks.append(p)
-
-    print(f"{len(ranks)} ranks started")
-
-    # Use join to wait for all processes to finish
-    for rank in ranks:
-        rank.join()
-
-    validate_model(args, model, device, dataset, dataloader_kwargs)
 
 
 if __name__ == "__main__":
