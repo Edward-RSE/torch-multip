@@ -6,6 +6,7 @@ import torch.utils.data.dataloader
 
 def train_model(rank, args, model, device, dataset, dataloader_kwargs):
     torch.manual_seed(args.seed + rank)
+    torch.set_num_threads(1)
     data_loader = torch.utils.data.DataLoader(dataset, **dataloader_kwargs)
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 

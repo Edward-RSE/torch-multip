@@ -42,7 +42,10 @@ def main(args):
     dataset = torchvision.datasets.MNIST(
         "./data", train=True, download=True, transform=transform
     )
-    dataloader_kwargs = {"batch_size": args.batch_size, "shuffle": True}
+    dataloader_kwargs = {
+        "batch_size": args.batch_size,
+        "shuffle": True,
+    }
 
     if args.use_cuda and torch.cuda.is_available():
         device = torch.device("cuda")
@@ -72,6 +75,8 @@ def main(args):
         p.start()
         ranks.append(p)
 
+    print(f"{len(ranks)} ranks started")
+
     # Use join to wait for all processes to finish
     for rank in ranks:
         rank.join()
@@ -84,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument("--use-mps", action="store_true")
     parser.add_argument("--use-cuda", action="store_true")
     parser.add_argument("--seed", default=1, type=int)
-    parser.add_argument("--num-ranks", default=1, type=int)
+    parser.add_argument("--num-ranks", default=2, type=int)
     parser.add_argument("--batch-size", default=64, type=int)
     parser.add_argument("--num-epochs", default=15, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
