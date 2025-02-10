@@ -3,7 +3,8 @@ import argparse
 import torch
 import torchvision
 
-from train import train
+from torch_multip.train import train_model
+from torch_multip.validate import validate_model
 
 
 class Net(torch.nn.Module):
@@ -58,16 +59,15 @@ def main(args):
     # For CPU parallelisation, each process will be able to access (and update)
     # the model because it's in shared memory on the node. This will not work
     # for distributed parallelism, e.g. > 1 node or > 1 GPU.
-    net = Net().to(device)
-    if device.type in ["cpu", "cuda"]:  # MPS raises an exception
-        net.share_memory()
+    model = Net().to(device)
+    model.share_memory()
 
     # Start each process running train()
     ranks = []
     for rank in range(args.num_ranks):
         p = torch.multiprocessing.Process(
-            target=train,
-            args=(rank, args, net, device, dataset, dataloader_kwargs),
+            target=train_model,
+            args=(rank, args, model, device, dataset, dataloader_kwargs),
         )
         p.start()
         ranks.append(p)
@@ -75,6 +75,8 @@ def main(args):
     # Use join to wait for all processes to finish
     for rank in ranks:
         rank.join()
+
+    validate_model(args, model, device, dataset, dataloader_kwargs)
 
 
 if __name__ == "__main__":

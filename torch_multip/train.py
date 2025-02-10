@@ -4,7 +4,7 @@ import torch
 import torch.utils.data.dataloader
 
 
-def train(rank, args, model, device, dataset, dataloader_kwargs):
+def train_model(rank, args, model, device, dataset, dataloader_kwargs):
     torch.manual_seed(args.seed + rank)
     data_loader = torch.utils.data.DataLoader(dataset, **dataloader_kwargs)
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
@@ -15,8 +15,7 @@ def train(rank, args, model, device, dataset, dataloader_kwargs):
         train_epoch(epoch, rank, model, device, data_loader, optimizer)
 
     end = time.time()
-
-    print(f"Rank {rank} training time: {end - start}")
+    print(f"Rank {rank} training time: {end - start:.2f}")
 
 
 def train_epoch(epoch, rank, model, device, data_loader, optimizer):

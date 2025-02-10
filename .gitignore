@@ -178,3 +178,4 @@ cython_debug/
 
 # project
 data
+.vscode
