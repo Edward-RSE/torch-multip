@@ -6,6 +6,7 @@ from torch_multip.validate import validate_model
 
 
 def train_multiprocess(args, dataset, dataloader_kwargs):
+    torch.multiprocessing.set_start_method("spawn", force=True)
     if args.use_cuda and torch.cuda.is_available():
         device = torch.device("cuda")
         dataloader_kwargs.update({"num_workers": 1, "pin_memory": True})
@@ -14,7 +15,7 @@ def train_multiprocess(args, dataset, dataloader_kwargs):
     else:
         device = torch.device("cpu")
 
-    print(f"Using device: {device} with {args.num_ranks} ranks")
+    print(f"Using device: {device} with {args.world_size} ranks")
     print(args)
 
     # Put the device onto the device, and, if on the CPU, into shared memory.
@@ -26,15 +27,13 @@ def train_multiprocess(args, dataset, dataloader_kwargs):
 
     # Start each process running train()
     ranks = []
-    for rank in range(args.num_ranks):
+    for rank in range(args.world_size):
         p = torch.multiprocessing.Process(
             target=train_model,
             args=(rank, args, model, device, dataset, dataloader_kwargs),
         )
         p.start()
         ranks.append(p)
-
-    print(f"{len(ranks)} ranks started")
 
     # Use join to wait for all processes to finish
     for rank in ranks:

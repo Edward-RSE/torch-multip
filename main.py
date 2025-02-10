@@ -3,12 +3,13 @@ import argparse
 import torch
 import torchvision
 
+from torch_multip.distributed import train_distributed
 from torch_multip.multiprocess import train_multiprocess
 
 
 def main(args):
+    print(args)
     torch.manual_seed(args.seed)
-    torch.multiprocessing.set_start_method("spawn", force=True)
 
     transform = torchvision.transforms.Compose(
         [
@@ -24,16 +25,21 @@ def main(args):
         "shuffle": True,
     }
 
-    train_multiprocess(args, dataset, dataloader_kwargs)
+    if args.mode == "distributed":
+        train_distributed(args, dataset, dataloader_kwargs)
+    else:
+        train_multiprocess(args, dataset, dataloader_kwargs)
 
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=["distributed", "multiprocess"])
+    parser.add_argument("--dist-backend", default="gloo", type=str)
     parser.add_argument("--use-mps", action="store_true")
     parser.add_argument("--use-cuda", action="store_true")
     parser.add_argument("--seed", default=1, type=int)
-    parser.add_argument("--num-ranks", default=2, type=int)
+    parser.add_argument("--world-size", default=1, type=int)
     parser.add_argument("--batch-size", default=64, type=int)
     parser.add_argument("--num-epochs", default=15, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
