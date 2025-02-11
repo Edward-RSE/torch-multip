@@ -27,6 +27,15 @@ function stop_nvidia_smi() {
     kill -SIGTERM $NVIDIA_SMI_PID
 }
 
+function process_nvidia_smi() {
+    sed -i '/^[[:space:]]*$/d' $RESULTS_DIR/"$SLURM_JOB_NAME"."$SLURM_JOB_ID".nvidia-smi.xml
+    sed -i '1!{/^<?xml version="1.0" ?>/d;}' $RESULTS_DIR/"$SLURM_JOB_NAME"."$SLURM_JOB_ID".nvidia-smi.xml
+    sed -i '1!{/^<!DOCTYPE nvidia_smi_log SYSTEM "nvsmi_device_v12.dtd">/d;}' $RESULTS_DIR/"$SLURM_JOB_NAME"."$SLURM_JOB_ID".nvidia-smi.xml
+    sed -i '/<?xml version="1.0" ?>/a <nvidia_smi>' $RESULTS_DIR/"$SLURM_JOB_NAME"."$SLURM_JOB_ID".nvidia-smi.xml
+    sed -i -e '$a</nvidia_smi>' $RESULTS_DIR/"$SLURM_JOB_NAME"."$SLURM_JOB_ID".nvidia-smi.xml
+    xsltproc --output $RESULTS_DIR/"$SLURM_JOB_NAME"."$SLURM_JOB_ID".nvidia-smi.csv nvidia-smi.xml2csv.xslt $RESULTS_DIR/"$SLURM_JOB_NAME"."$SLURM_JOB_ID".nvidia-smi.xml
+}
+
 source $HOME/.pyenv/versions/ctdcomm-3.12.8/bin/activate
 
 start_nvidia_smi 2
@@ -39,3 +48,4 @@ python main.py \
     --num-epochs 10
 
 stop_nvidia_smi
+process_nvidia_smi
