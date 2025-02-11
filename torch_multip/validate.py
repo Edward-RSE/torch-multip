@@ -3,16 +3,15 @@ import time
 import torch
 
 
-def validate_model(args, model, device, dataset, dataloader_kwargs):
+def validate_model(args, model, device, dataloader):
     start = time.time()
     torch.manual_seed(args.seed)
-    data_loader = torch.utils.data.DataLoader(dataset, **dataloader_kwargs)
 
     loss = 0
     correct = 0
 
     with torch.no_grad():
-        for data, target in data_loader:
+        for data, target in dataloader:
             output = model(data.to(device))
             loss += torch.nn.functional.nll_loss(
                 output, target.to(device), reduction="sum"
@@ -20,10 +19,10 @@ def validate_model(args, model, device, dataset, dataloader_kwargs):
             pred = output.max(1)[1]
             correct += pred.eq(target.to(device)).sum().item()
 
-    loss /= len(data_loader.dataset)
-    percent_correct = correct / len(data_loader.dataset) * 100.0
+    loss /= len(dataloader.dataset)
+    percent_correct = correct / len(dataloader.dataset) * 100.0
     print(f"Average loss = {loss:.6f}")
-    print(f"Accuracy = {correct} / {len(data_loader.dataset)} ({percent_correct:.0f}%)")
+    print(f"Accuracy = {correct} / {len(dataloader.dataset)} ({percent_correct:.0f}%)")
 
     end = time.time()
     print(f"Model validation time: {end - start:.2f}")

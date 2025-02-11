@@ -15,9 +15,6 @@ def train_multiprocess(args, dataset, dataloader_kwargs):
     else:
         device = torch.device("cpu")
 
-    print(f"Using device: {device} with {args.world_size} ranks")
-    print(args)
-
     # Put the device onto the device, and, if on the CPU, into shared memory.
     # For CPU parallelisation, each process will be able to access (and update)
     # the model because it's in shared memory on the node. This will not work
@@ -25,12 +22,17 @@ def train_multiprocess(args, dataset, dataloader_kwargs):
     model = Net().to(device)
     model.share_memory()
 
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        **dataloader_kwargs,
+    )
+
     # Start each process running train()
     ranks = []
     for rank in range(args.world_size):
         p = torch.multiprocessing.Process(
             target=train_model,
-            args=(rank, args, model, device, dataset, dataloader_kwargs),
+            args=(rank, args, model, device, dataloader),
         )
         p.start()
         ranks.append(p)
@@ -39,4 +41,4 @@ def train_multiprocess(args, dataset, dataloader_kwargs):
     for rank in ranks:
         rank.join()
 
-    validate_model(args, model, device, dataset, dataloader_kwargs)
+    validate_model(args, model, device, dataloader)
