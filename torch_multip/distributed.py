@@ -29,7 +29,7 @@ def initialise_device(rank, args):
     return device
 
 
-def initialise_dataloader(rank, world_size, dataset, dataloader_kwargs):
+def initialise_distributed_dataloader(rank, world_size, dataset, dataloader_kwargs):
     dataloader_kwargs["shuffle"] = None
     sampler = torch.utils.data.DistributedSampler(
         dataset, num_replicas=world_size, rank=rank, shuffle=True
@@ -37,6 +37,14 @@ def initialise_dataloader(rank, world_size, dataset, dataloader_kwargs):
     return torch.utils.data.DataLoader(
         dataset, sampler=sampler, **dataloader_kwargs
     ), sampler
+
+
+def initialise_validation_dataloader(dataset, dataloader_kwargs):
+    dataloader_kwargs["shuffle"] = True
+    return torch.utils.data.DataLoader(
+        dataset,
+        **dataloader_kwargs,
+    )
 
 
 def distributed_worker(rank, args, dataset, dataloader_kwargs):
@@ -49,7 +57,7 @@ def distributed_worker(rank, args, dataset, dataloader_kwargs):
         model, device_ids=[rank] if args.use_cuda else None
     )
 
-    dataloader, sampler = initialise_dataloader(
+    distributed_dataloader, distributed_sampler = initialise_distributed_dataloader(
         rank, args.world_size, dataset, dataloader_kwargs
     )
 
@@ -58,14 +66,19 @@ def distributed_worker(rank, args, dataset, dataloader_kwargs):
         args,
         distributed_model,
         device,
-        dataloader,
-        sampler=sampler,
+        distributed_dataloader,
+        sampler=distributed_sampler,
     )
-
     torch.distributed.barrier()
+
     if rank == 0:
         torch.save(model.state_dict(), "model.pt")
+        validation_dataloader = initialise_validation_dataloader(
+            dataset, dataloader_kwargs
+        )
+        validate_model(args, distributed_model, device, validation_dataloader)
 
+    torch.distributed.barrier()
     destroy_world()
     print(f"Rank {rank} has finished")
 
@@ -79,7 +92,3 @@ def train_distributed(args, dataset, dataloader_kwargs):
         nprocs=args.world_size,
         join=True,
     )
-
-    model = Net()
-    model.load_state_dict(torch.load("model.pt", weights_only=True))
-    validate_model(args, model, "cpu", dataset, dataloader_kwargs)
