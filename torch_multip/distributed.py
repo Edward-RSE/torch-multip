@@ -22,8 +22,13 @@ def destroy_world():
 
 
 def initialise_device(rank, args):
+    local_rank = int(os.environ.setdefault("LOCAL_RANK", str(rank)))
     if args.use_cuda:
-        device = torch.device(f"cuda:{rank}")
+        if local_rank > torch.cuda.device_count() - 1:
+            raise RuntimeError(
+                f"Local rank {local_rank} is greater than device count {torch.cuda.device_count()} on current node"
+            )
+        device = torch.device(f"cuda:{local_rank}")
     else:
         device = torch.device("cpu")
     return device
