@@ -3,7 +3,7 @@
 # There is 1 worker per dataloader per GPU process, I think. So we should
 # request more CPUs than tasks.
 
-#SBATCH --partition=swarm_l4
+#SBATCH --partition=swarm_a100
 #SBATCH --gpus=2
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
