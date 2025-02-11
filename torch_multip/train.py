@@ -3,11 +3,23 @@ import time
 import torch
 import torch.utils.data.dataloader
 
+from torch_multip.partition import DataPartitioner
+
 
 def train_model(rank, args, model, device, dataset, dataloader_kwargs):
     torch.manual_seed(args.seed + rank)
     torch.set_num_threads(1)
+
+    world_size = torch.distributed.get_world_size()
+
+    if world_size > 1:
+        dataloader_kwargs["batch_size"] = args.batch_size // world_size
+        partition_sizes = [1.0 / world_size for _ in range(world_size)]
+        partition = DataPartitioner(dataset, partition_sizes, seed=args.seed + rank)
+        dataset = partition.use(rank)
+
     data_loader = torch.utils.data.DataLoader(dataset, **dataloader_kwargs)
+
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     start = time.time()
