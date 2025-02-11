@@ -6,6 +6,7 @@ import torch
 def validate_model(args, model, device, dataloader):
     start = time.time()
     torch.manual_seed(args.seed)
+    model.eval()
 
     loss = 0
     correct = 0
