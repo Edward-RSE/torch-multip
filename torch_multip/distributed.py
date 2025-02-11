@@ -77,7 +77,7 @@ def distributed_worker(rank, args, dataset, dataloader_kwargs):
     torch.distributed.barrier()
 
     if rank == 0:
-        torch.save(model.state_dict(), "model.pt")
+        torch.save(distributed_model.state_dict(), "model.pt")
         validation_dataloader = initialise_validation_dataloader(
             dataset, dataloader_kwargs
         )
