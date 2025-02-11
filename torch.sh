@@ -15,6 +15,8 @@
 #SBATCH --mem=32G
 #SBATCH --time=00:10:00
 
+export PYTHONUNBUFFERED=1
+
 RESULTS_DIR=$(pwd)
 
 function start_nvidia_smi() {
