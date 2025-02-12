@@ -12,9 +12,10 @@ def create_world(rank, world_size, backend):
     os.environ.setdefault("MASTER_PORT", "29500")
     torch.distributed.init_process_group(
         backend,
-        rank=rank,
+        # rank=rank,
         world_size=world_size,
     )
+    return torch.distributed.get_rank()
 
 
 def destroy_world():
@@ -53,7 +54,7 @@ def initialise_validation_dataloader(dataset, dataloader_kwargs):
 
 
 def distributed_worker(rank, args, dataset, dataloader_kwargs):
-    create_world(rank, args.world_size, args.dist_backend)
+    rank = create_world(rank, args.world_size, args.dist_backend)
     device = initialise_device(rank, args)
     print(f"Rank {rank} created using device {device}")
 
@@ -94,6 +95,6 @@ def train_distributed(args, dataset, dataloader_kwargs):
     torch.multiprocessing.spawn(
         distributed_worker,
         args=(args, dataset, dataloader_kwargs),
-        nprocs=args.world_size,
+        nprocs=1,
         join=True,
     )
