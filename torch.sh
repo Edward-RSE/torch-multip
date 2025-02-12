@@ -44,10 +44,10 @@ source $HOME/.pyenv/versions/ctdcomm-3.12.8/bin/activate
 start_nvidia_smi 2
 
 # Using num-workers=1 so each torchrun process only spawns a single process.
-torchrun --nnodes=$SLURM_NNODES --nproc-per-node=$SLURM_NTASKS_PER_NODE main.py
+torchrun --nnodes=$SLURM_NNODES --nproc-per-node=$SLURM_NTASKS_PER_NODE main.py \
     --multinode \
     --use-cuda \
-    --num-epochs 10 \
+    --num-epochs 10
 
 stop_nvidia_smi
 process_nvidia_smi
