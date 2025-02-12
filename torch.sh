@@ -7,7 +7,7 @@
 #SBATCH --partition=swarm_a100
 #SBATCH --gpus=2
 #SBATCH --nodes=2
-#SBATCH --ntasks=1
+#SBATCH --ntasks=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=2
 #SBATCH --threads-per-core=1
