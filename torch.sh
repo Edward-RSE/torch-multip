@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# There is 1 worker per dataloader per GPU process, I think. So we should
-# request more CPUs than tasks.
+# I am requesting here an extra CPU per task because I have set it such that
+# each dataloader, when using CUDA, has one additional worker to do the
+# data loading.
 
 #SBATCH --partition=swarm_a100
 #SBATCH --gpus=2
-#SBATCH --nodes=1
-#SBATCH --ntasks=2
-#SBATCH --ntasks-per-node=2
+#SBATCH --nodes=2
+#SBATCH --ntasks=1
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=2
 #SBATCH --threads-per-core=1
 #SBATCH --gpus-per-task=1
@@ -42,12 +43,11 @@ source $HOME/.pyenv/versions/ctdcomm-3.12.8/bin/activate
 
 start_nvidia_smi 2
 
-python main.py \
-    distributed \
-    --dist-backend nccl \
+# Using num-workers=1 so each torchrun process only spawns a single process.
+torchrun --nnodes=$SLURM_NNODES --nproc-per-node=$SLURM_NTASKS_PER_NODE main.py
+    --multinode \
     --use-cuda \
-    --world-size 2 \
-    --num-epochs 10
+    --num-epochs 10 \
 
 stop_nvidia_smi
 process_nvidia_smi

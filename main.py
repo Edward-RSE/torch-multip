@@ -1,3 +1,4 @@
+import sys
 import argparse
 
 import torch
@@ -8,7 +9,6 @@ from torch_multip.multiprocess import train_multiprocess
 
 
 def main(args):
-    print(args)
     torch.manual_seed(args.seed)
 
     transform = torchvision.transforms.Compose(
@@ -25,7 +25,7 @@ def main(args):
         "shuffle": True,
     }
 
-    if args.mode == "distributed":
+    if args.multinode:
         train_distributed(args, dataset, dataloader_kwargs)
     else:
         train_multiprocess(args, dataset, dataloader_kwargs)
@@ -34,8 +34,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["distributed", "multiprocess"])
-    parser.add_argument("--dist-backend", default="gloo", type=str)
+    parser.add_argument("--multinode", action="store_true", default=False)
     parser.add_argument("--use-mps", action="store_true")
     parser.add_argument("--use-cuda", action="store_true")
     parser.add_argument("--seed", default=1, type=int)
@@ -45,5 +44,9 @@ if __name__ == "__main__":
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--momentum", default=0.5, type=float)
     args = parser.parse_args()
+
+    if args.multinode and args.world_size > 1:
+        print("Cannot use --multinode and --world-size at the same time")
+        sys.exit(1)
 
     main(args)
