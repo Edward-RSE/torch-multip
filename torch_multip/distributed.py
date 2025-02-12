@@ -24,7 +24,7 @@ def create_world(rank: int, world_size: int, backend: str | None = None) -> int:
     Returns
     -------
     int
-        The rank of the current process
+        The global rank of the current process
     """
     os.environ.setdefault("MASTER_ADDR", "localhost")
     os.environ.setdefault("MASTER_PORT", "29500")
@@ -33,6 +33,7 @@ def create_world(rank: int, world_size: int, backend: str | None = None) -> int:
         rank=rank,
         world_size=world_size,
     )
+
     return torch.distributed.get_rank()
 
 
@@ -41,7 +42,7 @@ def destroy_world() -> None:
     torch.distributed.destroy_process_group()
 
 
-def initialise_device(rank: int, args: argparse.Namespace) -> torch.device:
+def initialise_device(local_rank: int, args: argparse.Namespace) -> torch.device:
     """Initialise the device used by the rank.
 
     If using CUDA, the local rank, set by torchrun, is used to determine the
@@ -60,9 +61,8 @@ def initialise_device(rank: int, args: argparse.Namespace) -> torch.device:
         The device assigned to the rank
     """
     if args.use_cuda:
-        local_rank = int(os.environ.setdefault("LOCAL_RANK", str(rank)))
         local_world_size = int(
-            os.environ.setdefault("WORLD_SIZE", str(args.world_size))
+            os.environ.setdefault("LOCAL_WORLD_SIZE", str(args.world_size))
         )
         if local_world_size > torch.cuda.device_count():
             hostname = socket.gethostname()
@@ -135,7 +135,7 @@ def initialise_validation_dataloader(
 
 
 def distributed_worker(
-    rank: str,
+    proc_id: str,
     args: argparse.Namespace,
     dataset: torch.utils.data.Dataset,
     dataloader_kwargs: dict,
@@ -147,8 +147,8 @@ def distributed_worker(
 
     Parameters
     ----------
-    rank : str
-        The rank of the calling process
+    prod_id  : str
+        The ID of the spawned process
     args : argparse.Namespace
         The command line arguments for the program
     dataset : torch.utils.data.Dataset
@@ -158,29 +158,29 @@ def distributed_worker(
     """
     # Set the initial rank using either the LOCAL_RANK variable if using
     # torchrun, or the process id from torch.multiprocessing.spawn
-    rank = int(os.environ.setdefault("LOCAL_RANK", str(rank)))
+    local_rank = int(os.environ.setdefault("LOCAL_RANK", str(proc_id)))
 
-    # Returns rank from torch.distributed.get_rank(), which will be the rank
-    # after initialisation of the world group
-    rank = create_world(
-        rank, args.world_size, backend="nccl" if args.use_cuda else "gloo"
+    # Returns rank either from LOCAL_RANK or from torch.distributed.get_rank(),
+    # which will be the (global) rank after initialisation of the world group
+    global_rank = create_world(
+        local_rank, args.world_size, backend="nccl" if args.use_cuda else "gloo"
     )
-    device = initialise_device(rank, args)
-    print(f"Rank {rank} created using device {device}")
+    device = initialise_device(local_rank, args)
+    print(f"Global rank {global_rank} created using local device {device}")
 
     model = Net().to(device)
     distributed_model = torch.nn.parallel.DistributedDataParallel(
         model,
-        device_ids=[rank] if args.use_cuda else None,
-        output_device=rank if args.use_cuda else None,
+        device_ids=[device] if args.use_cuda else None,
+        output_device=device if args.use_cuda else None,
     )
 
     distributed_dataloader, distributed_sampler = initialise_distributed_dataloader(
-        rank, args.world_size, dataset, dataloader_kwargs
+        global_rank, args.world_size, dataset, dataloader_kwargs
     )
 
     train_model(
-        rank,
+        global_rank,
         args,
         distributed_model,
         device,
@@ -189,7 +189,7 @@ def distributed_worker(
     )
     torch.distributed.barrier()
 
-    if rank == 0:
+    if global_rank == 0:
         torch.save(distributed_model.state_dict(), "model.pt")
         validation_dataloader = initialise_validation_dataloader(
             dataset, dataloader_kwargs
@@ -198,7 +198,7 @@ def distributed_worker(
 
     torch.distributed.barrier()
     destroy_world()
-    print(f"Rank {rank} has finished")
+    print(f"Rank {global_rank} has finished")
 
 
 def train_distributed(
