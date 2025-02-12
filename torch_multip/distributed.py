@@ -1,5 +1,6 @@
 import argparse
 import os
+import socket
 
 import torch
 
@@ -60,9 +61,13 @@ def initialise_device(rank: int, args: argparse.Namespace) -> torch.device:
     """
     if args.use_cuda:
         local_rank = int(os.environ.setdefault("LOCAL_RANK", str(rank)))
-        if local_rank > torch.cuda.device_count() - 1:
+        local_world_size = int(
+            os.environ.setdefault("WORLD_SIZE", str(args.world_size))
+        )
+        if local_world_size > torch.cuda.device_count():
+            hostname = socket.gethostname()
             raise RuntimeError(
-                f"Local rank {local_rank} is greater than device count {torch.cuda.device_count()} on current node"
+                f"Local world size of {local_world_size} on {hostname} is greater than device count of {torch.cuda.device_count()}"
             )
         device = torch.device(f"cuda:{local_rank}")
     else:
